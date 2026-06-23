@@ -17,6 +17,10 @@ jobs:
       FABRIC_PIPELINE: ${{ vars.FABRIC_PIPELINE }}
       FABRIC_JOB_TIMEOUT: ${{ vars.FABRIC_JOB_TIMEOUT }}
 
+      FAB_SPN_CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
+      FAB_SPN_CLIENT_SECRET: ${{ secrets.FABRIC_CLIENT_SECRET }}
+      FAB_TENANT_ID: ${{ secrets.FABRIC_TENANT_ID }}
+
     steps:
     
       - name: Setup Python
@@ -29,19 +33,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install ms-fabric-cli
           fab --version
-
-      - name: Login to Microsoft Fabric
-        env:
-          FABRIC_CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
-          FABRIC_CLIENT_SECRET: ${{ secrets.FABRIC_CLIENT_SECRET }}
-          FABRIC_TENANT_ID: ${{ secrets.FABRIC_TENANT_ID }}
-        run: |
-          fab auth login \
-            -u "${FABRIC_CLIENT_ID}" \
-            -p "${FABRIC_CLIENT_SECRET}" \
-            --tenant "${FABRIC_TENANT_ID}"
-
-          fab auth status
 
       - name: Run Fabric Data Pipeline
         shell: bash
