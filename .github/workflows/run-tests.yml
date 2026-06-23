@@ -1,0 +1,57 @@
+name: Run tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+
+    environment: test
+
+    env:
+      FABRIC_WORKSPACE: ${{ vars.FABRIC_WORKSPACE }}
+      FABRIC_PIPELINE: ${{ vars.FABRIC_PIPELINE }}
+      FABRIC_JOB_TIMEOUT: ${{ vars.FABRIC_JOB_TIMEOUT }}
+
+    steps:
+    
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Fabric CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install ms-fabric-cli
+          fab --version
+
+      - name: Login to Microsoft Fabric
+        env:
+          FABRIC_CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
+          FABRIC_CLIENT_SECRET: ${{ secrets.FABRIC_CLIENT_SECRET }}
+          FABRIC_TENANT_ID: ${{ secrets.FABRIC_TENANT_ID }}
+        run: |
+          fab auth login \
+            -u "$FABRIC_CLIENT_ID" \
+            -p "$FABRIC_CLIENT_SECRET" \
+            --tenant "$FABRIC_TENANT_ID"
+
+          fab auth status
+
+      - name: Run Fabric Data Pipeline
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ORCHESTRATOR_PATH="${FABRIC_WORKSPACE}.Workspace/${FABRIC_ORCHESTRATOR}.DataPipeline"
+
+          echo "Ejecutando pipeline de Fabric: $ORCHESTRATOR_PATH"
+
+          fab job run "$ORCHESTRATOR_PATH" \
+            --timeout "$FABRIC_JOB_TIMEOUT" \
+            --polling_interval 30
