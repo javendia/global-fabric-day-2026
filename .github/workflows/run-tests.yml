@@ -14,7 +14,7 @@ jobs:
 
     env:
       FABRIC_WORKSPACE: ${{ vars.FABRIC_WORKSPACE }}
-      FABRIC_PIPELINE: ${{ vars.FABRIC_PIPELINE }}
+      FABRIC_ORCHESTRATOR: ${{ vars.FABRIC_ORCHESTRATOR }}
       FABRIC_JOB_TIMEOUT: ${{ vars.FABRIC_JOB_TIMEOUT }}
 
       FAB_SPN_CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
