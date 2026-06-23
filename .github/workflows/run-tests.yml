@@ -34,7 +34,14 @@ jobs:
           pip install ms-fabric-cli
           fab --version
 
-      - name: Run Fabric Data Pipeline
+      - name: Configure Fabric CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          fab config set encryption_fallback_enabled true
+          fab config set mode command_line
+
+      - name: Build DBT project
         shell: bash
         run: |
           set -euo pipefail
