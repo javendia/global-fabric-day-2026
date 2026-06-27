@@ -1,0 +1,30 @@
+name: 'awlt_fabric_demo'
+version: '1.0.0'
+config-version: 2
+
+profile: 'awlt_fabric_demo'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+analysis-paths: ["analyses"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+docs-paths: ["docs"]
+asset-paths: ["assets"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  awlt_fabric_demo:
+    staging:
+      +materialized: ephemeral
+    dwh:
+      +schema: dwh
+      +materialized: table
+
+on-run-end:
+  - "{{ save_test_results(results) }}"

@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: adventureworkslt
+    database: lh_adventureworks_raw
+    schema: SalesLT
+
+    tables:
+      - name: Address
+      - name: Customer
+      - name: CustomerAddress
+      - name: Product
+      - name: ProductCategory
+      - name: ProductDescription
+      - name: ProductModel
+      - name: ProductModelProductDescription
+      - name: SalesOrderDetail
+      - name: SalesOrderHeader
