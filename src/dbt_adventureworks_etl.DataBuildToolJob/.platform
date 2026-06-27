@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataBuildToolJob",
+    "displayName": "dbt_adventureworks_etl"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "4cb1ce2e-224c-9a70-491b-0560f1e6a9af"
+  }
+}
