@@ -1,0 +1,144 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "ForEach",
+        "typeProperties": {
+          "items": {
+            "value": "@pipeline().parameters.tables",
+            "type": "Expression"
+          },
+          "activities": [
+            {
+              "type": "Copy",
+              "typeProperties": {
+                "source": {
+                  "type": "SqlServerSource",
+                  "partitionOption": "None",
+                  "queryTimeout": "02:00:00",
+                  "datasetSettings": {
+                    "type": "SqlServerTable",
+                    "typeProperties": {
+                      "schema": "SalesLT",
+                      "table": {
+                        "value": "@item()",
+                        "type": "Expression"
+                      },
+                      "database": "AdventureWorksLT"
+                    },
+                    "schema": [],
+                    "externalReferences": {
+                      "connection": "3355288e-02da-48f2-bd41-7657a5588494"
+                    },
+                    "annotations": []
+                  }
+                },
+                "sink": {
+                  "type": "LakehouseTableSink",
+                  "tableActionOption": "OverwriteSchema",
+                  "applyVOrder": false,
+                  "partitionOption": "None",
+                  "datasetSettings": {
+                    "type": "LakehouseTable",
+                    "typeProperties": {
+                      "schema": "SalesLT",
+                      "table": {
+                        "value": "@item()",
+                        "type": "Expression"
+                      }
+                    },
+                    "schema": [],
+                    "connectionSettings": {
+                      "name": "lh_adventureworks_raw",
+                      "properties": {
+                        "type": "Lakehouse",
+                        "typeProperties": {
+                          "artifactId": "d9f3ab88-1089-9127-47c6-e456cdfebad6",
+                          "workspaceId": "00000000-0000-0000-0000-000000000000",
+                          "rootFolder": "Tables"
+                        },
+                        "externalReferences": {
+                          "connection": "ee22f08c-5288-4835-ac15-36e4e4148d25"
+                        },
+                        "annotations": []
+                      }
+                    },
+                    "annotations": []
+                  }
+                },
+                "translator": {
+                  "type": "TabularTranslator",
+                  "typeConversion": true,
+                  "typeConversionSettings": {
+                    "allowDataTruncation": true,
+                    "treatBooleanAsNumber": false
+                  }
+                },
+                "enableStaging": false
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "copy_adventureworks",
+              "dependsOn": []
+            }
+          ]
+        },
+        "name": "foreach_adventureworks_extract_tables",
+        "dependsOn": []
+      },
+      {
+        "type": "InvokeDataBuildToolJob",
+        "typeProperties": {
+          "dataBuildToolJobId": "4cb1ce2e-224c-9a70-491b-0560f1e6a9af",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "threads": 4
+        },
+        "externalReferences": {
+          "connection": "da786349-e9e2-4a96-9b2d-ff30a591a706"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "dbt_adventureworks_etl",
+        "dependsOn": [
+          {
+            "activity": "foreach_adventureworks_extract_tables",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "tables": {
+        "type": "array",
+        "defaultValue": [
+          "Address",
+          "Customer",
+          "CustomerAddress",
+          "Product",
+          "ProductCategory",
+          "ProductDescription",
+          "ProductModel",
+          "ProductModelProductDescription",
+          "SalesOrderDetail",
+          "SalesOrderHeader"
+        ]
+      },
+      "dbtCommand": {
+        "type": "string",
+        "defaultValue": "build"
+      }
+    }
+  }
+}
