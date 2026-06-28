@@ -1,4 +1,4 @@
-# SQL + dbt + Microsoft Fabric: evoluciona el desarrollo de tu Data Warehouse
+# Global Fabric Day 2026 - (FUGE) - Online
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Microsoft Fabric](https://img.shields.io/badge/Microsoft-Fabric-blue)](https://www.microsoft.com/microsoft-fabric)
