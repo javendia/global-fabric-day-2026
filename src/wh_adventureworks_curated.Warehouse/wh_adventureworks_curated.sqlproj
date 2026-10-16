@@ -1,3 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build">
   <Sdk Name="Microsoft.Build.Sql" Version="0.1.19-preview" />
   <PropertyGroup>
@@ -5,6 +6,7 @@
     <DSP>Microsoft.Data.Tools.Schema.Sql.SqlDwUnifiedDatabaseSchemaProvider</DSP>
     <ModelCollation>1033, CS</ModelCollation>
     <DefaultCollation>Latin1_General_100_BIN2_UTF8</DefaultCollation>
+    <ProjectGuid>{7EEFC53B-D37B-4C9F-9ED8-F31460AF9FB3}</ProjectGuid>
   </PropertyGroup>
   <Target Name="BeforeBuild">
     <Delete Files="$(BaseIntermediateOutputPath)\project.assets.json" />
