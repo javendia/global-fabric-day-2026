@@ -1,0 +1,88 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+
+jobs:
+  ci:
+    name: Run tests
+    runs-on: ubuntu-latest
+    environment: test
+    timeout-minutes: 120
+    env:
+      FABRIC_WORKSPACE: ${{ vars.FABRIC_WORKSPACE }}
+      FABRIC_ORCHESTRATOR: ${{ vars.FABRIC_ORCHESTRATOR }}
+      FABRIC_JOB_TIMEOUT: ${{ vars.FABRIC_JOB_TIMEOUT }}
+      FABRIC_SQL_SERVER: ${{ vars.FABRIC_SQL_SERVER }}
+      FABRIC_SQL_DATABASE: ${{ vars.FABRIC_SQL_DATABASE }}
+
+      FAB_SPN_CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
+      FAB_SPN_CLIENT_SECRET: ${{ secrets.FABRIC_CLIENT_SECRET }}
+      FAB_TENANT_ID: ${{ secrets.FABRIC_TENANT_ID }}
+
+    steps:
+
+      - uses: actions/checkout@v5
+
+      - name: Azure login with GitHub OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ env.FAB_SPN_CLIENT_ID }}
+          tenant-id: ${{ env.FAB_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Install Microsoft ODBC Driver 18
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          UBUNTU_VERSION=$(. /etc/os-release && echo "$VERSION_ID")
+      
+          curl -fsSLO "https://packages.microsoft.com/config/ubuntu/${UBUNTU_VERSION}/packages-microsoft-prod.deb"
+      
+          sudo dpkg -i packages-microsoft-prod.deb
+          rm packages-microsoft-prod.deb
+      
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
+      
+          odbcinst -q -d
+    
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install Fabric CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ./src/requirements.txt
+
+      - name: Configure Fabric CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          fab config set encryption_fallback_enabled true
+          fab config set mode command_line
+
+      - name: Run Fabric CI pipeline
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ORCHESTRATOR_PATH="${FABRIC_WORKSPACE}.Workspace/${FABRIC_ORCHESTRATOR}.DataPipeline"
+
+          JOB_INSTANCE_ID=$(fab job run "$ORCHESTRATOR_PATH" \
+            --timeout "$FABRIC_JOB_TIMEOUT" \
+            --polling_interval 30 \
+            --query "result.data[0].id")
+
+          echo "JOB_INSTANCE_ID=$JOB_INSTANCE_ID" >> "$GITHUB_ENV"
+
+      - name: Publish CI test details
+        if: always()
+        run: python ./src/scripts/report.py
