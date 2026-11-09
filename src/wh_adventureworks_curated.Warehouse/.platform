@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Warehouse",
+    "displayName": "wh_adventureworks_curated",
+    "description": ""
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "76f5f941-0b41-a175-4f0e-c4b8efe50374"
+  }
+}

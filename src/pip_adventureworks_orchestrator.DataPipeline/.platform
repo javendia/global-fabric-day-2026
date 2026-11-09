@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pip_adventureworks_orchestrator"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "43c84270-8d58-9b2b-4cf0-1f4c39a12793"
+  }
+}
