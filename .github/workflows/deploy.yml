@@ -36,6 +36,12 @@ jobs:
           tenant-id: ${{ env.FAB_TENANT_ID }}
           allow-no-subscriptions: true
 
+      - name: Initialize Azure SQL token
+        run: |
+          az account get-access-token \
+            --resource https://database.windows.net/ \
+            --output none
+
       - name: Install Microsoft ODBC Driver 18
         shell: bash
         run: |
