@@ -55,7 +55,7 @@ def prepare_report():
                 [column_name],
                 [status]
             FROM [log].[test_execution_history]
-            WHERE [invocation_id] = ?
+            WHERE [pipeline_run_id] = ?
             """
             , JOB_INSTANCE_ID
         )
