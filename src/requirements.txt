@@ -1,0 +1,3 @@
+ms-fabric-cli
+requests
+pyodbc
