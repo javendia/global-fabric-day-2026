@@ -18,7 +18,7 @@ def access_token():
     ).strip()
 
 def connect():
-    token = access_token()
+    token = access_token().encode("utf-16-le")
     token_struct = struct.pack("<I", len(token)) + token
     server = os.environ["FABRIC_SQL_SERVER"]
     database = os.environ["FABRIC_SQL_DATABASE"]
