@@ -7,13 +7,15 @@ import sys
 SQL_COPT_SS_ACCESS_TOKEN = 1256
 
 def access_token():
-
     return subprocess.check_output(
-        ["az", "account", "get-access-token",
-         "--resource", "https://database.windows.net/",
-         "--query", "accessToken", "-o", "tsv"],
-         text=True
-    ).decode("utf-8").strip()
+        [
+            "az", "account", "get-access-token",
+            "--resource", "https://database.windows.net/",
+            "--query", "accessToken",
+            "-o", "tsv"
+        ],
+        text=True
+    ).strip()
 
 def connect():
     token = access_token()
