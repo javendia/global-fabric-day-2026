@@ -1,0 +1,149 @@
+version: 2
+
+models:
+  - name: Customer
+    columns:
+      - name: customer_key
+        tests:
+          - not_null
+          - unique
+
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+
+      - name: customer_name
+        tests:
+          - not_null
+
+      - name: company_name
+
+      - name: sales_person
+
+      - name: email_address
+
+      - name: phone
+
+      - name: city
+
+      - name: state_province
+
+      - name: country_region
+
+      - name: postal_code
+
+  - name: Product
+    columns:
+      - name: product_key
+        tests:
+          - not_null
+          - unique
+
+      - name: product_id
+        tests:
+          - not_null
+          - unique
+
+      - name: product_name
+        tests:
+          - not_null
+
+      - name: product_number
+        tests:
+          - not_null
+          - unique
+
+      - name: color
+
+      - name: size
+
+      - name: standard_cost
+        tests:
+          - not_null
+
+      - name: list_price
+        tests:
+          - not_null
+
+      - name: is_current_product
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: product_category_name
+
+      - name: parent_product_category_name
+
+      - name: product_model_name
+
+  - name: Sales
+    columns:
+      - name: sales_key
+        tests:
+          - not_null
+          - unique
+
+      - name: sales_order_id
+        tests:
+          - not_null
+
+      - name: sales_order_number
+        tests:
+          - not_null
+
+      - name: customer_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_key
+
+      - name: product_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_product')
+              field: product_key
+
+      - name: order_date
+
+      - name: ship_date
+
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4, 5, 6]
+              quote: false
+
+      - name: status_name
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['in_process', 'approved', 'backordered', 'rejected', 'shipped', 'cancelled', 'unknown']
+
+      - name: online_order_flag
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: ship_method
+
+      - name: order_quantity
+
+      - name: unit_price
+
+      - name: unit_price_discount
+
+      - name: line_total
+
+      - name: gross_amount
+
+      - name: discount_amount
+
+      - name: is_discounted
