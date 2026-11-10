@@ -19,6 +19,7 @@ jobs:
       FABRIC_JOB_TIMEOUT: ${{ vars.FABRIC_JOB_TIMEOUT }}
       FABRIC_SQL_SERVER: ${{ vars.FABRIC_SQL_SERVER }}
       FABRIC_SQL_DATABASE: ${{ vars.FABRIC_SQL_DATABASE }}
+      REPORT_TITLE: CI test results
 
       FAB_SPN_CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
       FAB_SPN_CLIENT_SECRET: ${{ secrets.FABRIC_CLIENT_SECRET }}
@@ -83,13 +84,21 @@ jobs:
       
           ORCHESTRATOR_PATH="${FABRIC_WORKSPACE}.Workspace/${FABRIC_ORCHESTRATOR}.DataPipeline"
       
-          JOB_INSTANCE_ID=$(fab job run "$ORCHESTRATOR_PATH" \
+          JOB_RESULT=$(fab job run "$ORCHESTRATOR_PATH" \
             --timeout "$FABRIC_JOB_TIMEOUT" \
             --polling_interval 30 \
-            --json | jq -er '.result.data[0].id')
-      
+            --json)
+
+          # Extract job instance ID and status
+          JOB_INSTANCE_ID=$(echo "$JOB_RESULT" | jq -er '.result.data[0].id')
+          JOB_STATUS=$(echo "$JOB_RESULT" | jq -er '.status')
+
+          # Display results
           echo "Job Instance ID: $JOB_INSTANCE_ID"
+          echo "Job Status: $JOB_STATUS"
+      
           echo "JOB_INSTANCE_ID=$JOB_INSTANCE_ID" >> "$GITHUB_ENV"
+          echo "JOB_STATUS=$JOB_STATUS" >> "$GITHUB_ENV"
 
       - name: Publish CI test details
         if: always()
