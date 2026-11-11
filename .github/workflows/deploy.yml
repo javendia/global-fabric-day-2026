@@ -114,9 +114,10 @@ jobs:
         
       - name: Upload dbt test report
         if: ${{ always() && steps.fabric_pipeline.outputs.job_instance_id != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dbt-test-report-${{ steps.fabric_pipeline.outputs.job_instance_id }}
           path: artifacts/index.html
+          archive: false
           if-no-files-found: warn
           retention-days: 30
