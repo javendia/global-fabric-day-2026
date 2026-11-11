@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>$title</title>
+  <style>
+$stylesheet
+  </style>
+</head>
+<body>
+  <header class="hero"><div class="container"><h1>Test execution report</h1></div></header>
+  <main class="main container">
+    <section class="stats" aria-label="Test summary">
+      <div class="stat"><div class="stat-label">Total tests</div><div class="stat-value">$total</div></div>
+      <div class="stat"><div class="stat-label">Passed</div><div class="stat-value green">$passed</div></div>
+      <div class="stat"><div class="stat-label">Failed / error</div><div class="stat-value red">$failed</div></div>
+      <div class="stat"><div class="stat-label">Warnings</div><div class="stat-value amber">$warnings</div></div>
+    </section>
+    <section class="summary">
+      <div><strong>$headline</strong><p>$percent% of tests passed · $total executed</p></div>
+      <div class="track" role="progressbar" aria-valuenow="$percent" aria-valuemin="0" aria-valuemax="100"><div class="progress" style="--progress:$percent%"></div></div>
+    </section>
+    <div class="section-header"><h2>Test details <span class="total-count">($total)</span></h2>
+      <div class="tools"><input class="search" id="search" aria-label="Search tests" placeholder="Search test or entity...">
+        <button class="filter active" data-filter="all">All</button>
+        <button class="filter" data-filter="failures">Issues</button>
+        <button class="filter" data-filter="pass">Passed</button>
+      </div>
+    </div>
+    <section class="tests"><div class="table-head"><span>Test name / entity</span><span>Column</span><span>Status</span></div>
+$rows
+      <div id="empty" class="empty">No tests match the selected filters.</div>
+    </section>
+  </main>
+  <script>
+  (() => {
+    const search = document.getElementById('search');
+    const buttons = [...document.querySelectorAll('[data-filter]')];
+    const rows = [...document.querySelectorAll('.test-row')];
+    const empty = document.getElementById('empty');
+    let filter = 'all';
+    function draw() {
+      const query = search.value.trim().toLowerCase();
+      let visible = 0;
+      for (const row of rows) {
+        const status = row.dataset.status;
+        const matches = filter === 'all' || (filter === 'failures' && ['fail', 'error', 'warn'].includes(status)) || filter === status;
+        row.hidden = !matches || !row.dataset.search.includes(query);
+        if (!row.hidden) visible++;
+      }
+      empty.style.display = visible ? 'none' : 'block';
+    }
+    search.addEventListener('input', draw);
+    buttons.forEach(button => button.addEventListener('click', () => {
+      filter = button.dataset.filter;
+      buttons.forEach(other => other.classList.toggle('active', other === button));
+      draw();
+    }));
+    draw();
+  })();
+  </script>
+</body>
+</html>
