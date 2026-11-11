@@ -2,102 +2,12 @@
   "properties": {
     "activities": [
       {
-        "type": "ForEach",
-        "typeProperties": {
-          "items": {
-            "value": "@pipeline().parameters.tables",
-            "type": "Expression"
-          },
-          "activities": [
-            {
-              "type": "Copy",
-              "typeProperties": {
-                "source": {
-                  "type": "SqlServerSource",
-                  "partitionOption": "None",
-                  "queryTimeout": "02:00:00",
-                  "datasetSettings": {
-                    "type": "SqlServerTable",
-                    "typeProperties": {
-                      "schema": "SalesLT",
-                      "table": {
-                        "value": "@item()",
-                        "type": "Expression"
-                      },
-                      "database": "AdventureWorksLT"
-                    },
-                    "schema": [],
-                    "externalReferences": {
-                      "connection": "3355288e-02da-48f2-bd41-7657a5588494"
-                    },
-                    "annotations": []
-                  }
-                },
-                "sink": {
-                  "type": "LakehouseTableSink",
-                  "tableActionOption": "OverwriteSchema",
-                  "applyVOrder": false,
-                  "enableTimestampNtz": false,
-                  "partitionOption": "None",
-                  "datasetSettings": {
-                    "type": "LakehouseTable",
-                    "typeProperties": {
-                      "schema": "SalesLT",
-                      "table": {
-                        "value": "@item()",
-                        "type": "Expression"
-                      }
-                    },
-                    "schema": [],
-                    "connectionSettings": {
-                      "name": "lh_adventureworks_raw",
-                      "properties": {
-                        "type": "Lakehouse",
-                        "typeProperties": {
-                          "artifactId": "d9f3ab88-1089-9127-47c6-e456cdfebad6",
-                          "workspaceId": "00000000-0000-0000-0000-000000000000",
-                          "rootFolder": "Tables"
-                        },
-                        "externalReferences": {
-                          "connection": "ee22f08c-5288-4835-ac15-36e4e4148d25"
-                        },
-                        "annotations": []
-                      }
-                    },
-                    "annotations": []
-                  }
-                },
-                "translator": {
-                  "type": "TabularTranslator",
-                  "typeConversion": true,
-                  "typeConversionSettings": {
-                    "allowDataTruncation": true,
-                    "treatBooleanAsNumber": false
-                  }
-                },
-                "enableStaging": false
-              },
-              "policy": {
-                "timeout": "0.12:00:00",
-                "retry": 0,
-                "retryIntervalInSeconds": 30,
-                "secureInput": false,
-                "secureOutput": false
-              },
-              "name": "copy_adventureworks",
-              "dependsOn": []
-            }
-          ]
-        },
-        "name": "foreach_adventureworks_extract_tables",
-        "dependsOn": []
-      },
-      {
         "type": "InvokeDataBuildToolJob",
         "typeProperties": {
           "dataBuildToolJobId": "4cb1ce2e-224c-9a70-491b-0560f1e6a9af",
           "workspaceId": "00000000-0000-0000-0000-000000000000",
-          "threads": 4
+          "threads": 4,
+          "operation": "build"
         },
         "externalReferences": {
           "connection": "7647d043-b681-4dba-b509-6aa750592ab2"
@@ -110,35 +20,162 @@
           "secureOutput": false
         },
         "name": "dbt_adventureworks_etl",
+        "dependsOn": []
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "@concat(\n    'UPDATE [log].[test_execution_history] ',\n    'SET [pipeline_run_id] = ''', pipeline().RunId, ''' ',\n    'WHERE [invocation_id] = ''',\n    json(\n        split(\n            activity('web_get_log_content').output.Response,\n            decodeUriComponent('%0A')\n        )[3]\n    ).info.invocation_id,\n    ''';'\n)",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "connectionSettings": {
+          "name": "wh_adventureworks_curated",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "76f5f941-0b41-a175-4f0e-c4b8efe50374",
+              "endpoint": "hvdzxw4sd3hu5bug4a3lx2hrqm-naynwpk5tcseneybkzkklnuxr4.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "externalReferences": {
+              "connection": "7f311425-8aa2-42e4-8e1f-2a6c15a3cc65"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "sql_log_update_execution_history",
         "dependsOn": [
           {
-            "activity": "foreach_adventureworks_extract_tables",
+            "activity": "web_get_log_content",
             "dependencyConditions": [
-              "Succeeded"
+              "Completed"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "WebActivity",
+        "typeProperties": {
+          "method": "POST",
+          "relativeUrl": {
+            "value": "@concat(\n    pipeline().libraryVariables.tenant_id,\n    '/oauth2/v2.0/token'\n)",
+            "type": "Expression"
+          },
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          "body": {
+            "value": "@concat(\n    'grant_type=client_credentials&client_id=', \n    pipeline().libraryVariables.client_id, \n    '&client_secret=', \n    uriComponent(pipeline().libraryVariables.client_secret),\n    '&scope=https%3A%2F%2Fstorage.azure.com%2F.default'\n)",
+            "type": "Expression"
+          }
+        },
+        "externalReferences": {
+          "connection": "546846ae-b55c-47fa-9eab-2fa3975c63c1"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "web_get_access_token",
+        "dependsOn": [
+          {
+            "activity": "dbt_adventureworks_etl",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "WebActivity",
+        "typeProperties": {
+          "method": "GET",
+          "relativeUrl": {
+            "value": "@concat(\n    pipeline().libraryVariables.workspace_name,\n    '/',\n    pipeline().libraryVariables.dbt_job_name,\n    '.DBTItem/Output/',\n    activity('dbt_adventureworks_etl').output.id,\n    '/logs/dbt.log'\n)",
+            "type": "Expression"
+          },
+          "headers": {
+            "Authorization": {
+              "value": "@concat(\n    'Bearer ',\n    activity('web_get_access_token').output.access_token\n)",
+              "type": "Expression"
+            }
+          }
+        },
+        "externalReferences": {
+          "connection": "04187922-78ab-4df4-bbf0-8bac373b2174"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "web_get_log_content",
+        "dependsOn": [
+          {
+            "activity": "web_get_access_token",
+            "dependencyConditions": [
+              "Completed"
             ]
           }
         ]
       }
     ],
     "parameters": {
-      "tables": {
-        "type": "array",
-        "defaultValue": [
-          "Address",
-          "Customer",
-          "CustomerAddress",
-          "Product",
-          "ProductCategory",
-          "ProductDescription",
-          "ProductModel",
-          "ProductModelProductDescription",
-          "SalesOrderDetail",
-          "SalesOrderHeader"
-        ]
-      },
       "dbtCommand": {
         "type": "string",
         "defaultValue": "build"
+      }
+    },
+    "libraryVariables": {
+      "client_id": {
+        "type": "String",
+        "variableName": "client_id",
+        "libraryName": "vl_variables"
+      },
+      "client_secret": {
+        "type": "String",
+        "variableName": "client_secret",
+        "libraryName": "vl_variables"
+      },
+      "tenant_id": {
+        "type": "String",
+        "variableName": "tenant_id",
+        "libraryName": "vl_variables"
+      },
+      "scope": {
+        "type": "String",
+        "variableName": "scope",
+        "libraryName": "vl_variables"
+      },
+      "workspace_name": {
+        "type": "String",
+        "variableName": "workspace_name",
+        "libraryName": "vl_variables"
+      },
+      "dbt_job_name": {
+        "type": "String",
+        "variableName": "dbt_job_name",
+        "libraryName": "vl_variables"
       }
     }
   }

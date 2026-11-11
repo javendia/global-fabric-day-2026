@@ -78,28 +78,46 @@ jobs:
           fab config set mode command_line
 
       - name: Run Fabric CI pipeline
+        id: fabric_pipeline
         shell: bash
         run: |
           set -euo pipefail
-      
+
           ORCHESTRATOR_PATH="${FABRIC_WORKSPACE}.Workspace/${FABRIC_ORCHESTRATOR}.DataPipeline"
-      
+
+          # Run pipeline and preserve the CLI exit code
+          FAB_EXIT=0
           JOB_RESULT=$(fab job run "$ORCHESTRATOR_PATH" \
             --timeout "$FABRIC_JOB_TIMEOUT" \
             --polling_interval 30 \
-            --json)
+            --json) || FAB_EXIT=$?
 
-          # Extract job instance ID and status
-          JOB_INSTANCE_ID=$(echo "$JOB_RESULT" | jq -er '.result.data[0].id')
-          JOB_STATUS=$(echo "$JOB_RESULT" | jq -er '.status')
-
-          # Display results
+          JOB_INSTANCE_ID=$(echo "$JOB_RESULT" | jq -r '.result.data[0].id // empty')
+          JOB_STATUS=$(echo "$JOB_RESULT" | jq -r '.status // "Unknown"')
+      
           echo "Job Instance ID: $JOB_INSTANCE_ID"
           echo "Job Status: $JOB_STATUS"
       
+          # Environment variables for Python
           echo "JOB_INSTANCE_ID=$JOB_INSTANCE_ID" >> "$GITHUB_ENV"
           echo "JOB_STATUS=$JOB_STATUS" >> "$GITHUB_ENV"
-
-      - name: Publish CI test details
-        if: always()
-        run: python ./scripts/report.py
+      
+          # Step outputs for GitHub Actions expressions
+          echo "job_instance_id=$JOB_INSTANCE_ID" >> "$GITHUB_OUTPUT"
+          echo "job_status=$JOB_STATUS" >> "$GITHUB_OUTPUT"
+      
+          exit "$FAB_EXIT"
+          
+      - name: Generate dbt test report
+        if: ${{ always() && steps.fabric_pipeline.outputs.job_instance_id != '' }}
+        run: python scripts/report.py --output artifacts/index.html
+        
+      - name: Upload dbt test report
+        if: ${{ always() && steps.fabric_pipeline.outputs.job_instance_id != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: dbt-test-report-${{ steps.fabric_pipeline.outputs.job_instance_id }}
+          path: artifacts/index.html
+          archive: false
+          if-no-files-found: warn
+          retention-days: 30

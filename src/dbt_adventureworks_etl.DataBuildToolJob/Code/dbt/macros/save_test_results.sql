@@ -13,7 +13,8 @@
                     test_type,
                     entity,
                     column_name,
-                    status
+                    status,
+                    message
                 )
                 values
                 (
@@ -23,7 +24,8 @@
                     '{{ result.node.test_metadata.name }}',
                     '{{ result.node.depends_on.nodes[0].split(".")[-1] }}',
                     '{{ result.node.test_metadata.kwargs.get("column_name", "") }}',
-                    '{{ result.status }}'
+                    '{{ result.status }}',
+                    '{{ (result.message | default("", true)) | replace("'", "''") }}'
                 )
             {% endset %}
 
