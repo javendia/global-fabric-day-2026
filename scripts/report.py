@@ -1,35 +1,43 @@
+import argparse
 from collections import Counter
+from contextlib import closing
+from html import escape
 import os
+from pathlib import Path
 import pyodbc
+import re
 import struct
 import subprocess
 import sys
+from string import Template
 
+
+ROOT = Path(__file__).resolve().parents[1]
 SQL_COPT_SS_ACCESS_TOKEN = 1256
-JOB_INSTANCE_ID = os.environ.get("JOB_INSTANCE_ID")
-JOB_STATUS = os.environ.get("JOB_STATUS")
-SERVER = os.environ["FABRIC_SQL_SERVER"]
-DATABASE = os.environ["FABRIC_SQL_DATABASE"]
-SUMMARY_PATH = os.getenv("GITHUB_STEP_SUMMARY")
-TITLE = os.getenv("REPORT_TITLE", "CI test results")
+SQL_RESOURCE = "https://database.windows.net/"
+STATUS_ORDER = {"fail": 0, "error": 0, "warn": 1, "unknown": 2, "skipped": 3, "pass": 4}
+
 
 def access_token():
     return subprocess.check_output(
         [
             "az", "account", "get-access-token",
-            "--resource", "https://database.windows.net/",
+            "--resource", SQL_RESOURCE,
             "--query", "accessToken",
             "-o", "tsv"
         ],
         text=True
     ).strip()
 
+
 def connect():
     token = access_token().encode("utf-16-le")
     token_struct = struct.pack("<I", len(token)) + token
+    server = os.getenv("FABRIC_SQL_SERVER", "").strip()
+    database = os.getenv("FABRIC_SQL_DATABASE", "").strip()
     conn_str = (
         "Driver={ODBC Driver 18 for SQL Server};"
-        f"Server=tcp:{SERVER},1433;Database={DATABASE};"
+        f"Server=tcp:{server},1433;Database={database};"
         "Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
     )
     return pyodbc.connect(
@@ -38,83 +46,129 @@ def connect():
         timeout=30
     )
 
-def esc(value):
-    return str(value or "").replace("|", r"\|").replace("\r", " ").replace("\n", " ")
+def fetch_tests(run_id: str) -> list[dict]:
+    with closing(connect()) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute(
+                """SELECT test_name, test_type, entity, column_name, status,
+                          message, invocation_id
+                   FROM [log].[test_execution_history]
+                   WHERE pipeline_run_id = ?
+                   ORDER BY test_name""",
+                run_id,
+            )
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-def prepare_report():
 
-    try:
-        cn = connect()
-        cur = cn.cursor()
-        cur.execute(
-            """
-            SELECT 
-                [test_name],
-                [test_type],
-                [entity],
-                [column_name],
-                [status]
-            FROM [log].[test_execution_history]
-            WHERE [pipeline_run_id] = ?
-            """
-            , JOB_INSTANCE_ID
-        )
-        rows = cur.fetchall()
-        cn.close()
+def html_text(value: object, fallback: str = "") -> str:
+    return escape(str(value if value is not None and value != "" else fallback), quote=True)
 
-    except Exception as e:
-        md = (
-            f"## {TITLE}\n\nCould not retrieve test details from Fabric Warehouse.\n\n"
-            f"Pipeline status: `{JOB_STATUS}`\n\nError: `{esc(e)}`\n"
-        )
-        if SUMMARY_PATH:
-            with open(SUMMARY_PATH, "a", encoding="utf-8") as f:
-                f.write(md)
-        print(md, file=sys.stderr)
-        return 1
 
-    if not rows:
-        md = (
-            f"## {TITLE}\n\nNo rows found in `log.test_execution_history` for the current pipeline run.\n\n"
-            f"Pipeline status: `{JOB_STATUS}`.\n"
-        )
-        if SUMMARY_PATH:
-            with open(SUMMARY_PATH, "a", encoding="utf-8") as f:
-                f.write(md)
-        print(md)
-        return 1
+def render_test(test: dict) -> str:
+    status = test.get("status") or "unknown"
+    search_fields = ("test_name", "test_type", "entity", "column_name", "message")
+    search = " ".join(str(test.get(key) or "") for key in search_fields).lower()
+    return f'''<article class="test-row" data-status="{html_text(status)}" data-search="{html_text(search)}">
+      <div class="test-primary"><span class="dot {html_text(status)}"></span><div class="test-title"><strong>{html_text(test.get('test_name'))}</strong><small>{html_text(test.get('entity'), '—')} <span>·</span> {html_text(test.get('test_type'), 'custom')}</small></div></div>
+      <span class="col-name">{html_text(test.get('column_name'), '—')}</span><span class="pill {html_text(status)}">{html_text(status.upper())}</span>
+      <details><summary>Details <span aria-hidden="true">⌄</span></summary><div class="detail"><div><b>Message</b><p>{html_text(test.get('message'), 'No additional details available.')}</p></div><div><b>Invocation ID</b><code>{html_text(test.get('invocation_id'), '—')}</code></div></div></details>
+    </article>'''
 
-    counts = Counter(str(r.status).lower() for r in rows)
-    failed = counts.get("fail", 0) + counts.get("error", 0)
+
+def build_report(tests: list[dict], output: Path, title: str) -> Counter:
+    ordered_tests = sorted(
+        tests,
+        key=lambda test: (
+            STATUS_ORDER.get(test.get("status") or "unknown", 4),
+            str(test.get("test_name") or ""),
+        ),
+    )
+    counts = Counter(test.get("status") or "unknown" for test in ordered_tests)
+    total = len(ordered_tests)
+    passed = counts["pass"]
+    percentage = 100 * passed / total if total else 0.0
+    headline = "NO TESTS FOUND" if not total else (
+        "ALL TESTS PASSED" if passed == total else "ISSUES DETECTED"
+    )
+
+    template = Template((ROOT / "resources/templates/report.html").read_text(encoding="utf-8"))
+    html = template.substitute(
+        title=html_text(title),
+        stylesheet=(ROOT / "resources/css/report.css").read_text(encoding="utf-8"),
+        total=total,
+        passed=passed,
+        failed=counts["fail"] + counts["error"],
+        warnings=counts["warn"],
+        headline=headline,
+        percent=f"{percentage:.1f}",
+        rows="\n".join(render_test(test) for test in ordered_tests),
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(html, encoding="utf-8")
+    print(f"HTML report generated: {output} ({total} tests)")
+    return counts
+
+
+def github_summary(
+    title: str,
+    run_id: str,
+    job_status: str,
+    counts: Counter,
+    error: str = "",
+) -> None:
+
+    def safe(value: object) -> str:
+        return re.sub(r"[\r\n`|]", " ", str(value))
 
     lines = [
-        f"## {TITLE}", "",
-        f"**Job status:** `{JOB_STATUS}`",
-        f"**Tests captured:** {len(rows)}",
+        f"## {safe(title)}",
         "",
-        "| Result | Count |", "|---|---:|",
-        f"| Passed | {counts.get('pass', 0)} |",
-        f"| Failed / Error | {counts.get('fail', 0) + counts.get('error', 0)} |",
-        f"| Warn | {counts.get('warn', 0)} |",
-        f"| Skipped | {counts.get('skipped', 0)} |", ""
+        f"**Fabric run:** `{safe(run_id)}`",
+        f"**Job status:** `{safe(job_status)}`",
+        "",
     ]
 
-    lines += ["### All captured tests", "", "| Test | Test type | Entity | Status | Column |", "|---|---|---|---|---|"]
-    for r in rows:
-        lines.append(
-            f"| `{esc(r.test_name)}` | {esc(r.test_type)} | {esc(r.entity)} | {esc(r.status)} | {esc(r.column_name)} |"
-        )
+    if error:
+        lines.append(f"**Report error:** {safe(error)}")
+    else:
+        lines.extend([
+            f"**Tests:** {sum(counts.values())} · "
+            f"**Passed:** {counts['pass']} · "
+            f"**Failed / Error:** {counts['fail'] + counts['error']} · "
+            f"**Warnings:** {counts['warn']}",
+            "",
+            "Download the HTML report from this run's artifacts.",
+        ])
 
-    md = "\n".join(lines)
-    if SUMMARY_PATH:
-        with open(SUMMARY_PATH, "a", encoding="utf-8") as f:
-            f.write(md)
-    print(md)
+    content = "\n".join(lines) + "\n"
 
-    if JOB_STATUS != "Success":
+    if summary_path := os.getenv("GITHUB_STEP_SUMMARY"):
+        with open(summary_path, "a", encoding="utf-8") as file:
+            file.write(content)
+
+    print(content)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, default=Path("artifacts/index.html"))
+    args = parser.parse_args()
+
+    title = os.getenv("REPORT_TITLE", "CI test results")
+    run_id = os.getenv("JOB_INSTANCE_ID", "").strip()
+    job_status = os.getenv("JOB_STATUS", "Unknown")
+    try:
+        tests = fetch_tests(run_id)
+        counts = build_report(tests, args.output, title)
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError, pyodbc.Error) as exc:
+        print(f"Report generation failed: {exc}", file=sys.stderr)
+        github_summary(title, run_id or "Unknown", job_status, Counter(), str(exc))
         return 1
 
-    return 1 if failed > 0 else 0
+    github_summary(title, run_id, job_status, counts)
+    return int(not tests or counts["fail"] > 0 or counts["error"] > 0 or job_status != "Success")
+
 
 if __name__ == "__main__":
-    sys.exit(prepare_report())
+    sys.exit(main())
