@@ -10,7 +10,7 @@
           "operation": "build"
         },
         "externalReferences": {
-          "connection": "7647d043-b681-4dba-b509-6aa750592ab2"
+          "connection": "ac5203a6-5dbb-402e-9890-a16b03696a22"
         },
         "policy": {
           "timeout": "0.12:00:00",
@@ -46,7 +46,7 @@
               "workspaceId": "00000000-0000-0000-0000-000000000000"
             },
             "externalReferences": {
-              "connection": "7f311425-8aa2-42e4-8e1f-2a6c15a3cc65"
+              "connection": "6908baa1-731a-48cf-8dfb-03ec26a47089"
             },
             "annotations": []
           }
@@ -85,7 +85,7 @@
           }
         },
         "externalReferences": {
-          "connection": "546846ae-b55c-47fa-9eab-2fa3975c63c1"
+          "connection": "b48f4fd1-5d96-4dcc-9581-ed8f5b89ecbb"
         },
         "policy": {
           "timeout": "0.12:00:00",
@@ -120,7 +120,7 @@
           }
         },
         "externalReferences": {
-          "connection": "04187922-78ab-4df4-bbf0-8bac373b2174"
+          "connection": "597cfc9b-a40a-45ca-a641-c30f27c9d52d"
         },
         "policy": {
           "timeout": "0.12:00:00",
