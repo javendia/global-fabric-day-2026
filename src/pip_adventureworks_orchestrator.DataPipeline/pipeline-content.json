@@ -36,17 +36,14 @@
           ],
           "scriptBlockExecutionTimeout": "02:00:00"
         },
-        "connectionSettings": {
+        "linkedService": {
           "name": "wh_adventureworks_curated",
           "properties": {
             "type": "DataWarehouse",
             "typeProperties": {
               "artifactId": "76f5f941-0b41-a175-4f0e-c4b8efe50374",
-              "endpoint": "hvdzxw4sd3hu5bug4a3lx2hrqm-naynwpk5tcseneybkzkklnuxr4.datawarehouse.fabric.microsoft.com",
+              "endpoint": "wrhmxtk2d5kedpo4kdti75s6wy-kvw3nkttzffu3mqi7lnsfe3xba.datawarehouse.fabric.microsoft.com",
               "workspaceId": "00000000-0000-0000-0000-000000000000"
-            },
-            "externalReferences": {
-              "connection": "6908baa1-731a-48cf-8dfb-03ec26a47089"
             },
             "annotations": []
           }
